@@ -12,7 +12,7 @@ L_RED="/sys/class/leds/red:status/brightness"
 L_GREEN="/sys/class/leds/green:status/brightness"
 L_BLUE="/sys/class/leds/blue:status/brightness"
 IMG_DIR="/vol1/1000/down"
-BOOT_CONF="/boot/extlinux/extlinux.conf"
+BOOT_CONF="/boot/fnEnv.txt"
 LED_CONF="/etc/oec-led.conf"
 
 # 颜色定义
@@ -100,10 +100,10 @@ set_led() {
 # --- 核心状态获取函数 ---
 get_status() {
     local root_dev=$(findmnt -n -o SOURCE /)
-    if [[ "$root_dev" == *"/dev/sdb1"* ]]; then
+    if [[ "$root_dev" == *"/dev/sda1"* ]]; then
         CURRENT_ENV="SATA 硬盘系统"
         ENV_CODE="SATA"
-    elif [[ "$root_dev" == *"/dev/sda1"* ]]; then
+    elif [[ "$root_dev" == *"/dev/sdb1"* ]]; then
         CURRENT_ENV="USB 硬盘系统"
         ENV_CODE="USB"
     elif [[ "$root_dev" == *"/dev/mmcblk1p2"* ]]; then
@@ -116,8 +116,8 @@ get_status() {
 
     local next_root=$(grep -oP 'root=\K[^ ]+' "$BOOT_CONF")
     case "$next_root" in
-        "/dev/sdb1") NEXT_BOOT="SATA 硬盘系统" ;;
-        "/dev/sda1") NEXT_BOOT="USB 硬盘系统" ;;
+        "/dev/sda1") NEXT_BOOT="SATA 硬盘系统" ;;
+        "/dev/sdb1") NEXT_BOOT="USB 硬盘系统" ;;
         "/dev/mmcblk1p2") NEXT_BOOT="eMMC 内置系统" ;;
         *) NEXT_BOOT="未知 ($next_root)" ;;
     esac
@@ -255,7 +255,7 @@ post_write_fix() {
     sed -i "s|^[^[:space:]]\+[[:space:]]\+\/[[:space:]]|$target         /        |" "$mnt/etc/fstab"
 
     # 3. 局部替换 /boot 分区设备 (强制指向 eMMC 第一分区)
-    sed -i "s|^[^[:space:]]\+[[:space:]]\+\/boot[[:space:]]|/dev/mmcblk1p1   /boot   |" "$mnt/etc/fstab"
+    sed -i "s|^[^[:space:]]\+[[:space:]]\+\/boot[[:space:]]|/dev/mmcblk0p1   /boot   |" "$mnt/etc/fstab"
 
     umount $mnt && sync
     echo -e "${GREEN_C}fstab 修正完成 (已保留原参数)。${NC}"
@@ -519,9 +519,9 @@ while true; do
     echo -e "注意: 切换引导需要目标硬盘分区已经安装好了系统"
     echo -e "刷机方式：首次使用请先执行7初始化[分区]再执行4升级刷入新镜像(根据提示上传镜像.img)"
     echo -e "${BLUE_C}------------------------------------------------${NC}"
-    echo -e "  1. 切换引导：从 [SATA 硬盘] 启动 |  4. 升级 刷入镜像到 [SATA 硬盘 sdb1]"
+    echo -e "  1. 切换引导：从 [SATA 硬盘] 启动 |  4. 升级 刷入镜像到 [SATA 硬盘 sda1]"
     echo -e "  2. 切换引导：从 [eMMC 内置] 启动 |  5. 升级 刷入镜像到 [eMMC 内置 mmcblk1p2]"
-    echo -e "  3. 切换引导：从 [USB  硬盘] 启动 |  6. 升级 刷入镜像到 [USB  硬盘 sda1]"
+    echo -e "  3. 切换引导：从 [USB  硬盘] 启动 |  6. 升级 刷入镜像到 [USB  硬盘 sdb1]"
     echo -e "  提示. USB启动有个别设备无法启动，慎用，用USB先lsblk命令查看USB设备确保是sdb"
     echo -e "${BLUE_C}------------------------------------------------${NC}"
     echo -e "  7. 初始化[分区] SATA 硬盘       |  8. 初始化[分区] USB 硬盘"
@@ -530,7 +530,7 @@ while true; do
     echo -e "------------------------------------------------"
     echo -e "克隆方式：直接克隆磁盘方式，先执行7或8分区，再执行13或14克隆"
     echo -e "------------------------------------------------"
-    echo -e "  13. 克隆 eMMC系统 到 [SATA硬盘 sdb1]|  14. 克隆 eMMC系统 到 [USB硬盘 sda1]"
+    echo -e "  13. 克隆 eMMC系统 到 [SATA硬盘 sda1]|  14. 克隆 eMMC系统 到 [USB硬盘 sdb1]"
     echo -e "  15. 克隆 当前[$CURRENT_ENV] 到 [eMMC内置系统 mmcblk1p2]  "
     echo -e "------------------------------------------------"
     echo -e "  WEB文件上传: $WEB_STATUS"
@@ -541,12 +541,12 @@ while true; do
     read -p " 请输入数字选择功能 [1-16]: " choice
     case $choice in
         1) 
-            check_system_exists "/dev/sdb1" "SATA 硬盘"
+            check_system_exists "/dev/sda1" "SATA 硬盘"
             if [ $? -eq 0 ]; then
                 # 优化点：使用正则表达式精准替换 append 行中的 root 参数，支持 /dev/ 和 UUID 格式
-                sed -i '/^[[:space:]]*append/s|root=[^[:space:]]*|root=/dev/sdb1|' $BOOT_CONF
+                sed -i '/^[[:space:]]*append/s|root=[^[:space:]]*|root=/dev/sda1|' $BOOT_CONF
                 # 校验是否修改成功
-                if grep -q "root=/dev/sdb1" "$BOOT_CONF"; then
+                if grep -q "root=/dev/sda1" "$BOOT_CONF"; then
                     sync && ask_reboot 
                 else
                     echo -e "${RED_C}错误: 引导配置文件修改失败，请检查文件权限！${NC}"
@@ -572,11 +572,11 @@ while true; do
             fi
             ;;
         3) 
-            check_system_exists "/dev/sda1" "USB 硬盘"
+            check_system_exists "/dev/sdb1" "USB 硬盘"
             if [ $? -eq 0 ]; then
-                sed -i '/^[[:space:]]*append/s|root=[^[:space:]]*|root=/dev/sda1|' $BOOT_CONF
+                sed -i '/^[[:space:]]*append/s|root=[^[:space:]]*|root=/dev/sdb1|' $BOOT_CONF
                 # 校验是否修改成功
-                if grep -q "root=/dev/sda1" "$BOOT_CONF"; then
+                if grep -q "root=/dev/sdb1" "$BOOT_CONF"; then
                     sync && ask_reboot 
                 else
                     echo -e "${RED_C}错误: 引导配置文件修改失败，请检查文件权限！${NC}"
@@ -586,9 +586,9 @@ while true; do
                 read -p "按回车返回菜单..." t
             fi
             ;;
-        4) upgrade_logic "/dev/sdb1" "SATA 硬盘" "SATA" ;;
+        4) upgrade_logic "/dev/sda1" "SATA 硬盘" "SATA" ;;
         5) upgrade_logic "/dev/mmcblk1p2" "eMMC 内置" "EMMC" ;;
-        6) upgrade_logic "/dev/sda1" "USB 硬盘" "USB" ;;
+        6) upgrade_logic "/dev/sdb1" "USB 硬盘" "USB" ;;
         7) init_disk "/dev/sda" "SATA 硬盘" ;;
         8) init_disk "/dev/sdb" "USB 硬盘" ;;
         9) init_led_service; 
@@ -625,8 +625,8 @@ while true; do
         10) mac_manager ;;
         11) sync; reboot ;;
         12) exit 0 ;;
-        13) clone_system "/dev/sdb1" "SATA 硬盘" ;;
-        14) clone_system "/dev/sda1" "USB 硬盘" ;;
+        13) clone_system "/dev/sda1" "SATA 硬盘" ;;
+        14) clone_system "/dev/sdb1" "USB 硬盘" ;;
         15) clone_system "/dev/mmcblk1p2" "eMMC 内置" ;;
         16) web_upload_toggle "on" ;;
         17) web_upload_toggle "off" ;;
