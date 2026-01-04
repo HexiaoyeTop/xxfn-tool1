@@ -106,7 +106,7 @@ get_status() {
     elif [[ "$root_dev" == *"/dev/sda1"* ]]; then
         CURRENT_ENV="USB 硬盘系统"
         ENV_CODE="USB"
-    elif [[ "$root_dev" == *"/dev/mmcblk0p2"* ]]; then
+    elif [[ "$root_dev" == *"/dev/mmcblk1p2"* ]]; then
         CURRENT_ENV="eMMC 内置系统"
         ENV_CODE="EMMC"
     else
@@ -118,7 +118,7 @@ get_status() {
     case "$next_root" in
         "/dev/sdb1") NEXT_BOOT="SATA 硬盘系统" ;;
         "/dev/sda1") NEXT_BOOT="USB 硬盘系统" ;;
-        "/dev/mmcblk0p2") NEXT_BOOT="eMMC 内置系统" ;;
+        "/dev/mmcblk1p2") NEXT_BOOT="eMMC 内置系统" ;;
         *) NEXT_BOOT="未知 ($next_root)" ;;
     esac
 
@@ -255,7 +255,7 @@ post_write_fix() {
     sed -i "s|^[^[:space:]]\+[[:space:]]\+\/[[:space:]]|$target         /        |" "$mnt/etc/fstab"
 
     # 3. 局部替换 /boot 分区设备 (强制指向 eMMC 第一分区)
-    sed -i "s|^[^[:space:]]\+[[:space:]]\+\/boot[[:space:]]|/dev/mmcblk0p1   /boot   |" "$mnt/etc/fstab"
+    sed -i "s|^[^[:space:]]\+[[:space:]]\+\/boot[[:space:]]|/dev/mmcblk1p1   /boot   |" "$mnt/etc/fstab"
 
     umount $mnt && sync
     echo -e "${GREEN_C}fstab 修正完成 (已保留原参数)。${NC}"
@@ -520,7 +520,7 @@ while true; do
     echo -e "刷机方式：首次使用请先执行7初始化[分区]再执行4升级刷入新镜像(根据提示上传镜像.img)"
     echo -e "${BLUE_C}------------------------------------------------${NC}"
     echo -e "  1. 切换引导：从 [SATA 硬盘] 启动 |  4. 升级 刷入镜像到 [SATA 硬盘 sdb1]"
-    echo -e "  2. 切换引导：从 [eMMC 内置] 启动 |  5. 升级 刷入镜像到 [eMMC 内置 mmcblk0p2]"
+    echo -e "  2. 切换引导：从 [eMMC 内置] 启动 |  5. 升级 刷入镜像到 [eMMC 内置 mmcblk1p2]"
     echo -e "  3. 切换引导：从 [USB  硬盘] 启动 |  6. 升级 刷入镜像到 [USB  硬盘 sda1]"
     echo -e "  提示. USB启动有个别设备无法启动，慎用，用USB先lsblk命令查看USB设备确保是sdb"
     echo -e "${BLUE_C}------------------------------------------------${NC}"
@@ -531,7 +531,7 @@ while true; do
     echo -e "克隆方式：直接克隆磁盘方式，先执行7或8分区，再执行13或14克隆"
     echo -e "------------------------------------------------"
     echo -e "  13. 克隆 eMMC系统 到 [SATA硬盘 sdb1]|  14. 克隆 eMMC系统 到 [USB硬盘 sda1]"
-    echo -e "  15. 克隆 当前[$CURRENT_ENV] 到 [eMMC内置系统 mmcblk0p2]  "
+    echo -e "  15. 克隆 当前[$CURRENT_ENV] 到 [eMMC内置系统 mmcblk1p2]  "
     echo -e "------------------------------------------------"
     echo -e "  WEB文件上传: $WEB_STATUS"
     echo -e "  16. 开启 Web 上传               |  17. 关闭 Web 上传"
@@ -557,11 +557,11 @@ while true; do
             fi
             ;;
         2) 
-            check_system_exists "/dev/mmcblk0p2" "eMMC 内置"
+            check_system_exists "/dev/mmcblk1p2" "eMMC 内置"
             if [ $? -eq 0 ]; then
-                sed -i '/^[[:space:]]*append/s|root=[^[:space:]]*|root=/dev/mmcblk0p2|' $BOOT_CONF
+                sed -i '/^[[:space:]]*append/s|root=[^[:space:]]*|root=/dev/mmcblk1p2|' $BOOT_CONF
                 # 校验是否修改成功
-                if grep -q "root=/dev/mmcblk0p2" "$BOOT_CONF"; then
+                if grep -q "root=/dev/mmcblk1p2" "$BOOT_CONF"; then
                     sync && ask_reboot 
                 else
                     echo -e "${RED_C}错误: 引导配置文件修改失败，请检查文件权限！${NC}"
@@ -587,7 +587,7 @@ while true; do
             fi
             ;;
         4) upgrade_logic "/dev/sdb1" "SATA 硬盘" "SATA" ;;
-        5) upgrade_logic "/dev/mmcblk0p2" "eMMC 内置" "EMMC" ;;
+        5) upgrade_logic "/dev/mmcblk1p2" "eMMC 内置" "EMMC" ;;
         6) upgrade_logic "/dev/sda1" "USB 硬盘" "USB" ;;
         7) init_disk "/dev/sda" "SATA 硬盘" ;;
         8) init_disk "/dev/sdb" "USB 硬盘" ;;
@@ -627,7 +627,7 @@ while true; do
         12) exit 0 ;;
         13) clone_system "/dev/sdb1" "SATA 硬盘" ;;
         14) clone_system "/dev/sda1" "USB 硬盘" ;;
-        15) clone_system "/dev/mmcblk0p2" "eMMC 内置" ;;
+        15) clone_system "/dev/mmcblk1p2" "eMMC 内置" ;;
         16) web_upload_toggle "on" ;;
         17) web_upload_toggle "off" ;;
         *) echo "无效选择"; sleep 1 ;;
